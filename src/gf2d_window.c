@@ -7,7 +7,7 @@ struct gf2d_window
     int width;
     int height;
 
-    gf2d_graphics_buffer graphicBuffer;
+    gf2d_pixel *pixelsBuffer;
 
     void *data;
     void (*drawCallback)(gf2d_window *, int, int, void *);
@@ -75,8 +75,8 @@ LRESULT CALLBACK WindowProcW(HWND handle, UINT message, WPARAM wParam, LPARAM lP
         int oldWidth = window->width;
         int oldHeight = window->height;
 
-        gf2d_graphics_pixel *oldPixels = window->graphicBuffer.pixels;
-        gf2d_graphics_pixel *newPixels = gf2d_alloc_pixels_array(newWidth, newHeight);
+        gf2d_pixel *oldPixels = window->pixelsBuffer;
+        gf2d_pixel *newPixels = gf2d_alloc_pixels(newWidth, newHeight);
 
         if (!newPixels)
             return 0;
@@ -89,12 +89,12 @@ LRESULT CALLBACK WindowProcW(HWND handle, UINT message, WPARAM wParam, LPARAM lP
             memcpy(
                 &newPixels[y * newWidth],
                 &oldPixels[y * oldWidth],
-                copyWidth * sizeof(gf2d_graphics_pixel));
+                copyWidth * sizeof(gf2d_pixel));
         }
 
-        gf2d_destroy_pixels_array(oldPixels);
+        gf2d_destroy_pixels(oldPixels);
 
-        window->graphicBuffer.pixels = newPixels;
+        window->pixelsBuffer = newPixels;
         window->width = newWidth;
         window->height = newHeight;
 
@@ -125,7 +125,7 @@ LRESULT CALLBACK WindowProcW(HWND handle, UINT message, WPARAM wParam, LPARAM lP
             0, 0,
             window->width,
             window->height,
-            window->graphicBuffer.pixels,
+            window->pixelsBuffer,
             &bmi,
             DIB_RGB_COLORS,
             SRCCOPY);
@@ -182,8 +182,8 @@ gf2d_window *gf2d_create_window(const char *title, int width, int height)
     window->width = width;
     window->height = height;
 
-    window->graphicBuffer.pixels = gf2d_alloc_pixels_array(width, height);
-    if (!window->graphicBuffer.pixels)
+    window->pixelsBuffer = gf2d_alloc_pixels(width, height);
+    if (!window->pixelsBuffer)
     {
         gf2d_destroy_window(window);
         return NULL;
@@ -200,8 +200,8 @@ void gf2d_destroy_window(gf2d_window *window)
     if (window->handle)
         DestroyWindow(window->handle);
 
-    if (window->graphicBuffer.pixels)
-        gf2d_destroy_pixels_array(window->graphicBuffer.pixels);
+    if (window->pixelsBuffer)
+        gf2d_destroy_pixels(window->pixelsBuffer);
 
     free(window);
     window = NULL;
@@ -235,7 +235,7 @@ void gf2d_set_draw_callback(gf2d_window *window, void (*draw_callback)(gf2d_wind
 
 void gf2d_clear(gf2d_window *window, gf2d_color color)
 {
-    gf2d_graphics_pixel *pixels = window->graphicBuffer.pixels;
+    gf2d_pixel *pixels = window->pixelsBuffer;
     int count = window->width * window->height;
 
     for (int i = 0; i < count; i++)
@@ -254,7 +254,7 @@ void gf2d_draw_pixel(gf2d_window *window, int x, int y, gf2d_color color)
     if (!window)
         return;
 
-    if (!window->graphicBuffer.pixels)
+    if (!window->pixelsBuffer)
         return;
 
     if (x < 0 || y < 0)
@@ -263,10 +263,8 @@ void gf2d_draw_pixel(gf2d_window *window, int x, int y, gf2d_color color)
     if (x >= window->width || y >= window->height)
         return;
 
-    gf2d_graphics_buffer *buffer = &window->graphicBuffer;
-
-    gf2d_graphics_pixel *dst =
-        &buffer->pixels[y * window->width + x];
+    gf2d_pixel *dst =
+        &window->pixelsBuffer[y * window->width + x];
 
     gf2d_byte alpha = color.a;
 
@@ -275,4 +273,44 @@ void gf2d_draw_pixel(gf2d_window *window, int x, int y, gf2d_color color)
     dst->color.b = (color.b * alpha + dst->color.b * (255 - alpha)) / 255;
 
     dst->color.a = 255;
+}
+
+void gf2d_draw_image(gf2d_window *window, gf2d_image *image, int x, int y)
+{
+    if (!window)
+        return;
+    if (!window->pixelsBuffer)
+        return;
+    if (!image)
+        return;
+    if (!image->pixels)
+        return;
+
+    for (int posY = 0; posY < image->height; posY++)
+    {
+        for (int posX = 0; posX < image->width; posX++)
+        {
+            int destX = x + posX;
+            int destY = y + posY;
+
+            if (destX < 0 || destY < 0)
+                continue;
+            if (destX >= window->width || destY >= window->height)
+                continue;
+
+            int srcIndex = posY * image->width + posX;
+            int destIndex = destY * window->width + destX;
+
+            gf2d_pixel *dst = &window->pixelsBuffer[destIndex];
+            gf2d_pixel src = image->pixels[srcIndex];
+
+            gf2d_byte alpha = src.color.a;
+
+            dst->color.r = (src.color.r * alpha + dst->color.r * (255 - alpha)) / 255;
+            dst->color.g = (src.color.g * alpha + dst->color.g * (255 - alpha)) / 255;
+            dst->color.b = (src.color.b * alpha + dst->color.b * (255 - alpha)) / 255;
+
+            dst->color.a = 255;
+        }
+    }
 }

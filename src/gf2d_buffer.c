@@ -1,14 +1,14 @@
 #include "gf2d.h"
 #include "gf2d_intern.h"
 
-gf2d_graphics_pixel *gf2d_alloc_pixels_array(int width, int height)
+gf2d_pixel *gf2d_alloc_pixels(int width, int height)
 {
     if (width <= 0 || height <= 0)
         return NULL;
 
     size_t count = (size_t)width * (size_t)height;
 
-    gf2d_graphics_pixel *pixels = calloc(count, sizeof(gf2d_graphics_pixel));
+    gf2d_pixel *pixels = calloc(count, sizeof(gf2d_pixel));
     if (!pixels)
         return NULL;
 
@@ -23,7 +23,7 @@ gf2d_graphics_pixel *gf2d_alloc_pixels_array(int width, int height)
     return pixels;
 }
 
-void gf2d_destroy_pixels_array(gf2d_graphics_pixel *pixels)
+void gf2d_destroy_pixels(gf2d_pixel *pixels)
 {
     if (!pixels)
         return;

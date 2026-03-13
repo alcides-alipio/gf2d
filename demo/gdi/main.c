@@ -1,58 +1,83 @@
 #define GF2D_IMPLEMENTATION
 #include "../../gf2d.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 #include <stdlib.h>
 #include <time.h>
 
 typedef struct UserData
 {
-    float ballX, ballY;
-    float ballVX, ballVY;
-    clock_t lastTime;
+    gf2d_image images[10];
 } UserData;
 
 void onDraw(gf2d_window *window, int width, int height, void *data)
 {
     UserData *userData = (UserData *)data;
-    int radius = 20;
 
-    clock_t now = clock();
-    float dt = (float)(now - userData->lastTime) / CLOCKS_PER_SEC;
-    userData->lastTime = now;
+    int centerX = width / 2;
+    int centerY = height / 2;
 
-    userData->ballX += userData->ballVX * dt;
-    userData->ballY += userData->ballVY * dt;
-
-    if (userData->ballX - radius <= 0 || userData->ballX + radius >= width)
-        userData->ballVX = -userData->ballVX;
-    if (userData->ballY - radius <= 0 || userData->ballY + radius >= height)
-        userData->ballVY = -userData->ballVY;
+    int imagePosX1 = centerX - (userData->images[0].width / 2);
+    int imagePosY1 = centerY - (userData->images[0].height / 2);
 
     gf2d_clear(window, GF2D_WHITE);
+    if (userData->images[0].pixels)
+        gf2d_draw_image(window, &userData->images[0], imagePosX1, imagePosY1);
+}
 
-    for (int y = (int)(userData->ballY - radius); y <= (int)(userData->ballY + radius); y++)
-        for (int x = (int)(userData->ballX - radius); x <= (int)(userData->ballX + radius); x++)
+gf2d_image getImage(const char *path)
+{
+    gf2d_image img = {0};
+
+    if (!path)
+        return img;
+
+    int width, height, channels;
+
+    stbi_uc *image = stbi_load("capivara.png", &width, &height, &channels, 4);
+    if (!image)
+        return img;
+
+    gf2d_pixel *pixels = calloc(width * height, sizeof(gf2d_pixel));
+    if (!pixels)
+    {
+        stbi_image_free(image);
+        return img;
+    }
+
+    for (int y = 0; y < height; y++)
+    {
+        for (int x = 0; x < width; x++)
         {
-            int dx = x - (int)userData->ballX;
-            int dy = y - (int)userData->ballY;
-            if (dx*dx + dy*dy <= radius*radius)
-                gf2d_draw_pixel(window, x, y, GF2D_RGB(255, 0, 0));
+            int index = (y * width + x) * 4;
+
+            gf2d_byte r = image[index + 0];
+            gf2d_byte g = image[index + 1];
+            gf2d_byte b = image[index + 2];
+            gf2d_byte a = image[index + 3];
+
+            pixels[y * width + x].color = GF2D_RGBA(r, g, b, a);
         }
+    }
+
+    img.width = width;
+    img.height = height;
+    img.pixels = pixels;
+
+    stbi_image_free(image);
+
+    return img;
 }
 
 int main(void)
 {
-    srand((unsigned int)time(NULL));
-
     UserData *data = malloc(sizeof(UserData));
-    if (!data) return 1;
+    if (!data)
+        return 1;
 
-    data->ballX = 100 + rand() % 600;
-    data->ballY = 100 + rand() % 400;
-
-    data->ballVX = (float)((rand() % 200) + 100) * (rand() % 2 ? 1 : -1);
-    data->ballVY = (float)((rand() % 200) + 100) * (rand() % 2 ? 1 : -1);
-    data->lastTime = clock();
+    data->images[0] = getImage("capivara.png");
 
     gf2d_init();
     gf2d_window *window = gf2d_create_window("Random Ball", 800, 600);
@@ -62,6 +87,13 @@ int main(void)
 
     gf2d_destroy_window(window);
     gf2d_destroy();
+
+    for (int i = 0; i < sizeof(data->images) / sizeof(data->images[0]); i++)
+    {
+        if (data->images[i].pixels)
+            free(data->images[i].pixels);
+    }
+
     free(data);
 
     return 0;

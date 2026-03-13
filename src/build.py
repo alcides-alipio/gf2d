@@ -15,10 +15,10 @@ def parse_files(args):
         
         if not path.exists(arg):
             print(f"'{arg}' does not exist.")
-            exit()
+            exit(1)
         elif path.isdir(arg):
             print(f"'{arg}' is a directory. Expected a file name.")
-            exit()
+            exit(1)
         else:
             files.append(arg)
     
@@ -40,7 +40,7 @@ def omit_extern(code):
 
 if len(sys.argv) < 2:
     print_help()
-    exit()
+    exit(1)
 
 priv1_files = []
 priv2_files = []
@@ -56,7 +56,7 @@ while cur_arg < len(sys.argv):
     match sys.argv[cur_arg]:
         case "--help":
             print_help()
-            exit()
+            exit(1)
         case "--macro":
             cur_arg += 1
             macro = sys.argv[cur_arg]

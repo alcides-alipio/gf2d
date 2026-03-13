@@ -29,7 +29,20 @@ extern "C"
         gf2d_byte b, g, r, a;
     } gf2d_color;
 
-    void gf2d_init(void);
+    typedef struct gf2d_pixel
+    {
+        gf2d_color color;
+    } gf2d_pixel;
+
+    typedef struct gf2d_image
+    {
+        int width;
+        int height;
+        gf2d_pixel *pixels;
+    } gf2d_image;
+
+    void
+    gf2d_init(void);
     void gf2d_destroy(void);
 
     gf2d_window *gf2d_create_window(const char *title, int width, int height);
@@ -40,6 +53,7 @@ extern "C"
     void gf2d_set_draw_callback(gf2d_window *window, void (*draw_callback)(gf2d_window *, int, int, void *), void *data);
 
     void gf2d_draw_pixel(gf2d_window *window, int x, int y, gf2d_color color);
+    void gf2d_draw_image(gf2d_window *window, gf2d_image *image, int x, int y);
     void gf2d_clear(gf2d_window *window, gf2d_color color);
 #ifdef __cplusplus
 }
